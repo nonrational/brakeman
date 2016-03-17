@@ -14,7 +14,7 @@ class Rails4Tests < Test::Unit::TestCase
     @expected ||= {
       :controller => 0,
       :model => 3,
-      :template => 8,
+      :template => 9,
       :generic => 79
     }
   end
@@ -777,28 +777,6 @@ class Rails4Tests < Test::Unit::TestCase
       :user_input => nil
   end
 
-  def test_cross_site_scripting_warning_code_for_weak_xss
-    assert_warning :type => :template,
-      :warning_code => 2,
-      :warning_type => "Cross Site Scripting",
-      :line => 5,
-      :message => /^Unescaped\ parameter\ value/,
-      :confidence => 2,
-      :relative_path => "app/views/another/various_xss.html.erb",
-      :user_input => s(:call, s(:call, nil, :params), :[], s(:lit, :x))
-  end
-
-  def test_cross_site_scripting_no_warning_on_helper_methods_with_targets
-    assert_no_warning :type => :template,
-      :warning_code => 2,
-      :warning_type => "Cross Site Scripting",
-      :line => 7,
-      :message => /^Unescaped\ parameter\ value/,
-      :confidence => 2,
-      :relative_path => "app/views/another/various_xss.html.erb",
-      :user_input => s(:call, s(:call, nil, :params), :[], s(:lit, :t))
-  end
-
   def test_cross_site_scripting_warn_on_url_methods_in_href
     assert_warning :type => :template,
       :warning_code => 4,
@@ -823,10 +801,43 @@ class Rails4Tests < Test::Unit::TestCase
       :user_input => s(:call, nil, :params)
   end
 
+  def test_cross_site_scripting_warn_on_double_lookup_from_params_id
+    assert_warning :type => :template,
+      :warning_code => 4,
+      :fingerprint => "92d5f7afb5676d2aca85d6dc796d3606ec225c178a3727ba6a790138276a7c1c",
+      :warning_type => "Cross Site Scripting",
+      :line => 5,
+      :message => /^Unsafe\ parameter\ value\ in\ link_to\ href/,
+      :confidence => 1,
+      :relative_path => "app/views/another/various_xss.html.erb",
+      :user_input => s(:params)
+  end
+
+  def test_cross_site_scripting_warning_code_for_weak_xss
+    assert_warning :type => :template,
+      :warning_code => 2,
+      :warning_type => "Cross Site Scripting",
+      :line => 7,
+      :message => /^Unescaped\ parameter\ value/,
+      :confidence => 2,
+      :relative_path => "app/views/another/various_xss.html.erb",
+      :user_input => s(:call, s(:call, nil, :params), :[], s(:lit, :x))
+  end
+
+  def test_cross_site_scripting_no_warning_on_helper_methods_with_targets
+    assert_no_warning :type => :template,
+      :warning_code => 2,
+      :warning_type => "Cross Site Scripting",
+      :line => 12,
+      :message => /^Unescaped\ parameter\ value/,
+      :confidence => 2,
+      :relative_path => "app/views/another/various_xss.html.erb",
+      :user_input => s(:call, s(:call, nil, :params), :[], s(:lit, :t))
+  end
+
   def test_xss_no_warning_on_model_finds_in_href
     assert_no_warning :type => :template,
       :warning_code => 4,
-      :fingerprint => "ada8501c6761c382f47b0ecd03d653059f16aabd7ef1588900a916ae6fd877ef",
       :warning_type => "Cross Site Scripting",
       :line => 18,
       :message => /^Unsafe\ parameter\ value\ in\ link_to\ href/,
@@ -1063,7 +1074,7 @@ class Rails4Tests < Test::Unit::TestCase
       :code => s(:call, s(:const, :User), :where, s(:dstr, "", s(:evstr, s(:call, s(:params), :permit, s(:lit, :OMG))))),
       :user_input => s(:call, s(:params), :permit, s(:lit, :OMG))
   end
- 
+
   def test_format_validation_model_alias_processing
     assert_warning :type => :model,
       :warning_code => 30,
